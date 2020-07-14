@@ -1,0 +1,203 @@
+import pygame
+import random
+import math
+
+from pygame import mixer
+# initialize PyGame
+pygame.init()
+
+# creating the screen and setting the height and width (W, H)
+screen = pygame.display.set_mode((800, 600))
+
+# Game Loop
+# making sure that the window stays open while program is running
+running = True
+
+# Background Sound
+mixer.music.load('PyGameTutorial_BackgroundMusic.wav')
+mixer.music.play(-1)
+
+# How to set up Title of Window
+pygame.display.set_caption("Space Invaders")
+# How to set up Icon - may not show on Mac
+icon = pygame.image.load('PyGameTutorial_SpaceshipIcon32bit.png')
+pygame.display.set_icon(icon)
+
+# Player and Player image location (based on X and Y axis)
+playerImg = pygame.image.load('PyGameTutorial_SpaceshipImage64bit.png')
+player_locX = 300
+player_locY = 475
+playerX_change = 0
+
+# Invader image and location and number of enemies
+alienImg = []
+alien_locX = []
+alien_locY = []
+alienX_change = []
+alienY_change = []
+num_of_enemies = 6
+
+
+for i in range(num_of_enemies):
+    alienImg.append(pygame.image.load('PyGameTutorial_SpaceAlienImage64bit.png'))
+    # use the random python import to randomize the spawn point for our alien along the X axis
+    alien_locX.append(random.randint(0, 735))
+    alien_locY.append(55)
+    alienX_change.append(3)
+    alienY_change.append(40)
+
+
+# Bullets
+bulletImg = pygame.image.load('PyGameTutorial_SpaceshipBullet32bit.png')
+bullet_locX = 0
+bullet_locY = 480
+bulletX_change = 0
+bulletY_change = 10
+# bullet in two states, ready and fire - allows for creating conditions of movement dynamics
+bullet_state = "ready"
+
+# Score
+score_value = 0
+font = pygame.font.Font('freesansbold.ttf', 32)
+
+textX = 10
+textY = 10
+
+# creating function to render score onto screen
+def show_score(x, y):
+    score = font.render("Score: " + str(score_value), True, (255, 255, 255))
+    screen.blit(score, (x, y))
+
+
+
+# screen.blit means to draw, and we will be using to put images in GUI
+# uses 2 parameters: (1. the image itself,2. (coordinates))
+# function will be called in while loop so stays in GUI while game is running
+# can ONLY be called after screen fill code
+
+
+def player(x, y):
+    screen.blit(playerImg, (x, y))
+
+
+def alien(x, y, i):
+    screen.blit(alienImg[i], (x, y))
+
+
+def fire_bullet(x, y):
+    global bullet_state
+    bullet_state = "fire"
+    # adding values to the x and y to simulate the bullet firing from the middle and front of ship
+    screen.blit(bulletImg, (x + 16, y + 10))
+
+
+def bullet_collision(alien_locX, alien_locY, bullet_locX, bullet_locY):
+    # using mathematical distance formula to calculate distance between bullet and enemy to judge bullet hits
+    distance = math.sqrt((math.pow(alien_locX - bullet_locX, 2) + math.pow(alien_locY - bullet_locY, 2)))
+    if distance < 27:
+        return True
+    else:
+        return False
+
+
+game_over_font = pygame.font.Font('freesansbold.ttf', 70)
+
+
+def game_over_text():
+    gameover_text = game_over_font.render("GAME OVER", True, (255, 255, 255))
+    screen.blit(gameover_text, (200, 250))
+
+# all code will be inside while loop because it keeps program running
+while running:
+    # RGB screen fill using RGB pixel values - colors can be found via google
+    screen.fill((192, 192, 192))
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # check for keystrokes to allow keyboard support in-game
+        # KEY DOWN is pressing on a key, that is the 'event.type'
+        if event.type == pygame.KEYDOWN:
+
+            # event.key is the actual key being pressed
+            if event.key == pygame.K_LEFT:
+
+                playerX_change += -5
+            if event.key == pygame.K_RIGHT:
+
+                playerX_change += 5
+            if event.key == pygame.K_SPACE:
+                # only fire bullet after previously fired bullet exits screen
+                if bullet_state == "ready":
+                    bullet_sound = mixer.Sound('PyGameTutorial_LaserSound.wav')
+                    bullet_sound.play()
+                    bullet_locX = player_locX
+                    fire_bullet(bullet_locX, bullet_locY)
+
+        # KEY UP is taking finger off key
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                playerX_change = 0
+
+    # starting location of player in-game and with player movmenets
+    player_locX += playerX_change
+    player(player_locX, player_locY)
+
+
+    # creating boundaries for player movement within screen
+    if player_locX <= 0:
+        player_locX = 0
+    elif player_locX >= 736:
+        player_locX = 736
+
+    # creating boundaries for enemy movement within screen
+    for i in range(num_of_enemies):
+
+        # adding Game Over text based on enemy movement
+        if alien_locY[i] > 440:
+            for j in range(num_of_enemies):
+                alien_locY[j] = 2000
+            game_over_text()
+            break
+
+
+        alien_locX[i] += alienX_change[i]
+        if alien_locX[i] <= 0:
+            alienX_change[i] = 3
+            alien_locY[i] += alienY_change[i]
+        elif alien_locX[i] >= 736:
+            alienX_change[i] = -3
+            alien_locY[i] += alienY_change[i]
+
+            # collision
+        collision = bullet_collision(alien_locX[i], alien_locY[i], bullet_locX, bullet_locY)
+        if collision:
+            explosion_sound = mixer.Sound('PyGameTutorial_ExplosionSound.wav')
+            explosion_sound.play()
+            bullet_locY = 480
+            bullet_state = "ready"
+            score_value += 10
+            print(score_value)
+            alien_locX[i] = random.randint(0, 735)
+            alien_locY[i] = 55
+
+        # alien location in game
+        alien(alien_locX[i], alien_locY[i], i)
+
+    # bullet movement
+    if bullet_locY <= 0:
+        bullet_locY = 480
+        bullet_state = "ready"
+
+    if bullet_state == "fire":
+        fire_bullet(bullet_locX, bullet_locY)
+        bullet_locY -= bulletY_change
+
+
+
+    show_score(textX, textY)
+    # keep the screen updating with a color
+    pygame.display.update()
+
+
